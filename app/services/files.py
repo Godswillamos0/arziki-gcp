@@ -55,3 +55,18 @@ async def get_file_by_id(
     }
     
     
+async def get_user_profile(
+    user: user_dependency,
+    db: db_dependency
+):
+    user_model = db.query(User).filter(User.id == user.get("id")).first()
+    
+    if not user_model:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {
+        "id": user_model.id,
+        "username": user_model.user_name,
+        "email": user_model.email,
+        "role": user_model.role,
+    }

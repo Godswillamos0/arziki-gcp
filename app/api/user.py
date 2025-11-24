@@ -1,15 +1,20 @@
 from fastapi import APIRouter
 from app.services.files import (
                             get_all_files,
-                            get_file_by_id
+                            get_file_by_id,
+                            get_user_profile
                             )
 
 router = APIRouter(
-    prefix="/files",
-    tags=["Files"],
+    prefix="/user",
+    tags=["User"],
     responses={404: {"description": "Not found"}},
 )
 
-router.get("/", status_code=200)(get_all_files)
+router.get("/profile", status_code=200)(get_user_profile)
 
-router.get("/{file_id}", status_code=200)(get_file_by_id)
+router.get("/files", status_code=200)(get_all_files)
+
+router.get("/files/{file_id}", status_code=200)(get_file_by_id)
+
+

@@ -120,7 +120,7 @@ def generate_report_html(prediction_json: dict, model_name='gemini-2.5-flash'):
     analysis_data_str = json.dumps(prediction_json, indent=2)
 
     prompt = f"""
-You are a Professional Report Formatting Engine. Convert the data below into a complete HTML document that must fit an A4 paper size.
+You are a Professional Report Formatting Engine. Convert the data below into a complete HTML document that must fit an A4 page.
 
 1. Role: Act as a professional analyst. Interpret the data to create a narrative for the report, focusing on market demand, supply (stock levels), and strategic insights.
 2. Output Format: The output MUST be a single, complete HTML document. It must start exactly with <!DOCTYPE html> and end with </html>. Do not include any conversational text, markdown formatting, or explanations outside of the HTML structure.

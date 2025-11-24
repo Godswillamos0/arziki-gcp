@@ -1,5 +1,4 @@
-from playwright.sync_api import sync_playwright
-import asyncio
+from html2pdf_chromium import Converter
 
 
 def remove_before_doctype(html_str):
@@ -7,26 +6,20 @@ def remove_before_doctype(html_str):
     return html_str if doctype_index == -1 else html_str[doctype_index:]
 
 
-def create_html_file(html_content):
+def create_html_file(html_content, filename="my_page.html"):
     html_content = remove_before_doctype(html_content)
-    with open("my_page.html", "w") as f:
+    with open(filename, "w", encoding="utf-8") as f:
         f.write(html_content)
+    return filename
 
 
-def html_to_pdf_sync(output_pdf, input_html="my_page.html"):
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        page = browser.new_page()
-        page.goto(f"file:///{input_html}")
-        page.pdf(path=output_pdf, format="A4")
-        browser.close()
-        return output_pdf
+def html_to_pdf_sync(input_html="my_page.html", output_pdf="output"):
+    converter = Converter()  # create a fresh converter
+    pdf_path = f"{output_pdf}.pdf"
+    converter.convert_file(input_html, pdf_path)
+    return pdf_path
 
 
 async def convert_html_to_pdf(html_content: str, output_file: str):
-    create_html_file(html_content)
-
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(
-        None, html_to_pdf_sync, output_file, "my_page.html"
-    )
+    html_file = create_html_file(html_content)
+    return html_to_pdf_sync(html_file, output_file)

@@ -42,6 +42,7 @@ grpc-google-iam-v1==0.14.3
 grpcio==1.76.0
 grpcio-status==1.76.0
 h11==0.16.0
+html2pdf_chromium==0.1.3
 html5lib==1.1
 httpcore==1.0.9
 httptools==0.7.1

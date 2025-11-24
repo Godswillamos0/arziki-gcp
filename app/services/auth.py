@@ -13,7 +13,6 @@ from passlib.context import CryptContext
 from app.core.config import (SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES)
 from datetime import datetime, timedelta
 from typing import Annotated
-from app.utils.redis_config import set_key, get_key
 
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
@@ -204,48 +203,6 @@ async def verify_password(db: db_dependency,
         "message": f"{user_model.email}, you have successfully changed your password."
     }
     
-    
-async def logout(request: Request,
-                 user: user_dependency,
-                 db: db_dependency):
-    
-    user_model = db.query(User).filter(User.id == user.get("id")).first()
-    
-    if not user_model:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    #response = TokenData.remove_token_from_cookies()
-    
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing token")
-
-    token = auth_header.split(" ")[1]
-    
-    #Decode token
-    payload = TokenData.decode_token(token)
-    
-    exp = payload.get("exp")
-    
-    if not payload.get("exp"):
-        raise HTTPException(status_code=400, detail="Token compromised, exp missing")
-    
-    ttl = exp - int(time.time())
-    if ttl < 0:
-        raise HTTPException(status_code=400, detail="Token already expired")
-
-    #add access_token to redis
-    await set_key(request=request,
-            key= token,
-            value="blacklisted",
-            exp=ttl
-            )
-    
-    
-    return {
-        "message": f"{user_model.username}, you've successfully logged out."
-    }
-
 
 def if_verified(user: user_dependency):
     if not user.get("is_verified"):
