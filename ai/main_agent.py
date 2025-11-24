@@ -3,7 +3,10 @@ from google.genai import types
 from dotenv import load_dotenv
 import os
 from typing import Dict, List
-from google.cloud import speech
+from google import genai
+import json
+import re
+from google.oauth2 import service_account
 
 # Load .env file
 load_dotenv()
@@ -64,92 +67,112 @@ def predict_demand_v2(input_json: str) -> str:
 
     # 3. Define the Prompt
     prompt_text = f"""
-    You are an expert retail analyst. Analyze the business data below.
-    For each product, predict 'demand_level' (High, Medium, Low) and provide 'reasoning'.
-    
-    Data:
-    {input_json}
-    """
+You are an expert retail analyst. Analyze the business data below.
+For each product, predict 'demand_level' (High, Medium, Low) and provide 'reasoning'.
+Most importantly include the business name in the output and, return the results STRICTLY in the following JSON format:
+{{
+    "business_name": "string",
+    "predictions": [
+        {{
+        "category": "string",
+        "product_name": "string",
+        "price": float,
+        "current_stock": int,
+        "predicted_demand": int,
+        "demand_level": "High|Medium|Low",
+        "reasoning": "string"
+        }}
+    ]
+}}
+
+Data:
+{input_json}
+"""
+
 
     # 4. Generate Content with JSON enforcement
     # The new SDK makes it very easy to enforce JSON output using 'response_mime_type'
     print("Sending data to Gemini (via google-genai SDK)...")
     
     response = client.models.generate_content(
-        model="gemini-1.5-pro-002",  # Using the latest stable model
-        contents=prompt_text,
+        model="gemini-2.5-pro",  # Using the latest stable model
+        contents=[
+        {
+            "role": "user",
+            "parts": [{"text": prompt_text}]
+        }
+    ],
         config=types.GenerateContentConfig(
             response_mime_type="application/json", 
             temperature=0.2
         )
     )
-
+    print(response.text, "\n --- End of Gemini Response ---\n")
+    
     return response.text
 
 
-def generate_report_html(analysis_data: str, model_name: str = 'gemini-2.5-flash') -> str:
-    
+def generate_report_html(prediction_json: dict, model_name='gemini-2.5-flash'):
     client = create_client()
-    
-    """
-    Sends market analysis data to Gemini with instructions to return a structured HTML report.
 
-    Args:
-        analysis_data: The prediction data in JSON or string format.
-        model_name: The Gemini model to use.
 
-    Returns:
-        A string containing the generated HTML report.
-    """
-    
-    # Define a clear, constrained prompt to force HTML output
+    # Convert the combined data to a clean JSON string for the prompt
+    analysis_data_str = json.dumps(prediction_json, indent=2)
+
     prompt = f"""
-    You are a Professional Report Formatting Engine. Your task is to take the provided market analysis 
-    data and transform it into a single, complete HTML document suitable for conversion to PDF.
+You are a Professional Report Formatting Engine. Convert the data below into a complete HTML document that must fit an A4 paper size.
 
-    **Instructions:**
-    1.  **Start** the output with `<!DOCTYPE html>`.
-    2.  Use **internal CSS** within the `<style>` tags in the `<head>` for a clean, professional look 
-        (e.g., set font-family, basic padding, use colors for headers, etc.).
-    3.  Structure the data clearly using HTML tags (`<h1>`, `<h2>`, `<p>`, `<ul>`, `<table>`).
-    4.  **Do not** include any conversational text outside of the HTML structure.
+1. Role: Act as a professional analyst. Interpret the data to create a narrative for the report, focusing on market demand, supply (stock levels), and strategic insights.
+2. Output Format: The output MUST be a single, complete HTML document. It must start exactly with <!DOCTYPE html> and end with </html>. Do not include any conversational text, markdown formatting, or explanations outside of the HTML structure.
+3. Styling: All CSS must be internal, placed within a <style> tag in the <head> section. Design for a clean, modern, and professional aesthetic suitable for a corporate PDF report. Use a professional color palette (e.g., shades of blue, gray, and white), clear typography (e.g., sans-serif fonts like Arial or Helvetica), and appropriate spacing.
+4. Report Structure: The HTML body must be structured as follows:
+5. Main Title: An <h1> element containing the report title, dynamically using the business name (e.g., "Market Demand & Supply Analysis for [Business Name]").
+6. Executive Summary: An <h2> for "Executive Summary". Below it, write a 2-3 paragraph summary that synthesizes the key findings. Mention the overall demand landscape (e.g., "The analysis reveals a mixed demand landscape...") and highlight the most significant product opportunities or risks based on the demand_level and reasoning fields.
+7. Business Profile: An <h2> for "Business Profile". Display the business metadata (Industry, Location, Size) in a clear, easy-to-read format, such as an unordered list (<ul>) or a definition list (<dl>).
+8. Detailed Product Analysis: An <h2> for "Detailed Product Analysis". Present the product data in a well-structured HTML <table>.
+9. Table Headers (<thead>): The table must have columns for: "Product Name", "Category", "Price", "Current Stock", "Predicted Demand", and "Analyst Reasoning".
+10. Table Body (<tbody>): Each product from the JSON data should be a row (<tr>) in the table.
+11. Visual Indicators: In the "Predicted Demand" cell, use the text but also consider adding a subtle visual cue with CSS. For example, you could style the cell's background color based on the demand level (e.g., light green for 'High', light yellow for 'Medium', light red for 'Low').
+12. Strategic Recommendations: An <h2> for "Strategic Recommendations". Based on the analysis, provide 2-3 actionable recommendations in a bulleted list (<ul>). For example:
+13. For "High" demand products: "Prioritize restocking and consider marketing campaigns to capitalize on strong demand."
+14. For "Medium" demand products: "Maintain current stock levels and monitor sales trends closely."
+15. For "Low" demand products: "Consider promotional pricing or bundling to clear excess inventory."
+16. AT the end create a footer contain the business name and "powered by Arziki Analytics"."
 
-    **Market Analysis Data to Format:**
-    ---
-    {analysis_data}
-    ---
-    """
-
-    print("Sending data to Gemini for HTML generation...")
+DATA:
+{analysis_data_str}
+"""
 
     response = client.models.generate_content(
         model=model_name,
-        contents=[prompt],
+        contents=[{
+            "role": "user",
+            "parts": [{"text": prompt.replace("\\n", "")}]
+        }],
+        config=types.GenerateContentConfig(temperature=0.1)
     )
-    
-    # Return the generated text, which should be the HTML string
+
+    print("Generated HTML Report Content:\n", response.text)
     return response.text.strip()
 
 
 def transcribe_audio(audio_path: str):
-    client = speech.SpeechClient()
+    client = create_client()
 
-    with open(audio_path, "rb") as f:
-        audio_data = f.read()
+    audio_bytes = open(audio_path, "rb").read()
 
-    config = speech.RecognitionConfig(
-        auto_decoding_config=speech.AutoDetectDecodingConfig(),
-        language_codes=["en-US"]
+    response = client.models.generate_content(
+        model="gemini-2.0-flash",
+        contents=[
+            types.Part.from_bytes(audio_bytes, mime_type="audio/wav")
+        ],
+        config=types.GenerateContentConfig(
+            temperature=0.0,
+        )
     )
 
-    request = speech.RecognizeRequest(
-        recognizer="projects/YOUR_PROJECT_ID/locations/global/recognizers/default",
-        config=config,
-        content=audio_data
-    )
+    return response.text.strip()
 
-    response = client.recognize(request=request)
-    return response.results[0].alternatives[0].transcript if response.results else None
 
 
 # Full pipeline

@@ -1,7 +1,7 @@
 from fastapi import Depends, HTTPException, File, UploadFile
 from app.schemas.chat import (ChatMessageDTO, 
                           BussinessDataDTO)
-from app.db.models import User, ChatHistory, FileUpload
+from app.db.models import User, ChatMessages, FileUpload
 from app.db.dependencies import db_dependency
 from .auth import user_dependency
 from ai.main_agent import (generate_reply as ask_llm,
@@ -33,7 +33,7 @@ async def chat_with_ai(
     ai_response = ask_llm(user_model.id, chat_message.message)
     
     # Save chat history
-    chat_history_model = ChatHistory(
+    chat_history_model = ChatMessages(
         user_id=user_model.id,
         message=chat_message.message,
         response=ai_response
@@ -56,7 +56,7 @@ async def get_chat_history(
     if not user_model:
         raise HTTPException(status_code=404, detail="User not found")
     
-    chat_histories = db.query(ChatHistory).filter(ChatHistory.user_id == user_model.id).all()
+    chat_histories = db.query(ChatMessages).filter(ChatMessages.user_id == user_model.id).all()
     
     return [
         {
@@ -87,7 +87,7 @@ async def transcribe_audio_file(
     
     
     # Save transcription record
-    chat_history_model = ChatHistory(
+    chat_history_model = ChatMessages(
         user_id=user_model.id,
         message=transcription,
         response=response
@@ -116,9 +116,9 @@ async def generate_analytics_report(
     prediction = predict_demand_v2(business_data.dict())
     
     # Generate HTML report
-    html_content = generate_report_html(business_data.dict(), prediction)
+    html_content = generate_report_html(prediction)
     # Convert HTML to PDF
-    output_file = convert_html_to_pdf(html_content, output_file)
+    output_file = await convert_html_to_pdf(html_content, output_file)
     
     
     # Upload report to cloud storage
@@ -129,9 +129,9 @@ async def generate_analytics_report(
     # Save file upload record
     file_upload_model = FileUpload(
         user_id=user_model.id,
-        file_name=output_file,
-        file_url=f"https://storage.googleapis.com/{bucket_name}/{blob_name}",
-        uploaded_at=datetime.now()
+        #file_name=output_file,
+        file_path=f"https://storage.googleapis.com/{bucket_name}/{blob_name}",
+        upload_time=datetime.now()
     )
     db.add(file_upload_model)
     db.commit()

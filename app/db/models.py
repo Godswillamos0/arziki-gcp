@@ -16,16 +16,18 @@ class User(Base):
     role = Column(String, default="user")
     profile_image = Column(String, nullable=True)
     
-    chat_messages = relationship("ChatMessage", back_populates="user", cascade="all, delete-orphan")
+    chat_messages = relationship("ChatMessages", back_populates="user", cascade="all, delete-orphan")
+    file_uploads = relationship("FileUpload", back_populates="user")
+
     
 
-class ChatHistory(Base):
+class ChatMessages(Base):
     __tablename__ = "chat_messages"
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String(36), ForeignKey("users.id"))
     message = Column(String, nullable=False)
-    timestamp = Column(DateTime, default=func.now())
     response = Column(String, nullable=True)
+    timestamp = Column(DateTime, default=func.now())
     
     user = relationship("User", back_populates="chat_messages")
     

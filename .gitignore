@@ -1,7 +1,10 @@
 *.pyc
 __pycache__/
+credentials/
 test/
 .env
 .venv/
 test.db
 .DS_Store
+my_page.html
+*.pdf

@@ -1,39 +1,32 @@
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
-from bs4 import BeautifulSoup
-import os
+from playwright.sync_api import sync_playwright
+import asyncio
 
-def convert_html_to_pdf(html_content: str, output_filename: str) -> None:
-    """
-    Converts basic HTML content into a PDF using ReportLab.
-    Note: ReportLab cannot render full HTML/CSS like WeasyPrint.
-    This function extracts text and writes it into a PDF.
-    """
 
-    print(f"\nConverting HTML to PDF: {output_filename}...")
+def remove_before_doctype(html_str):
+    doctype_index = html_str.find("<!DOCTYPE html>")
+    return html_str if doctype_index == -1 else html_str[doctype_index:]
 
-    try:
-        # Extract text from HTML
-        soup = BeautifulSoup(html_content, "html.parser")
-        text_content = soup.get_text(separator="\n")
 
-        # Create PDF
-        c = canvas.Canvas(output_filename, pagesize=letter)
-        width, height = letter
-        y = height - 50  # Start top margin
+def create_html_file(html_content):
+    html_content = remove_before_doctype(html_content)
+    with open("my_page.html", "w") as f:
+        f.write(html_content)
 
-        # Write line by line
-        for line in text_content.split("\n"):
-            c.drawString(40, y, line.strip())
-            y -= 15  # line spacing
-            if y < 50:  # new page
-                c.showPage()
-                y = height - 50
 
-        c.save()
+def html_to_pdf_sync(output_pdf, input_html="my_page.html"):
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page()
+        page.goto(f"file:///{input_html}")
+        page.pdf(path=output_pdf, format="A4")
+        browser.close()
+        return output_pdf
 
-        print(f"✅ Success: PDF saved to {os.path.abspath(output_filename)}")
-        return output_filename
 
-    except Exception as e:
-        print(f"❌ PDF conversion failed. Error: {e}")
+async def convert_html_to_pdf(html_content: str, output_file: str):
+    create_html_file(html_content)
+
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(
+        None, html_to_pdf_sync, output_file, "my_page.html"
+    )

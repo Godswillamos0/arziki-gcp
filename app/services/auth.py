@@ -54,7 +54,7 @@ async def create_user(create_user_dto: CreateUserDTO, db: db_dependency):
     hashed_password = pwd_context.hash(create_user_dto.password)
     db_user = User(
         email=create_user_dto.email,
-        username=create_user_dto.username,
+        user_name=create_user_dto.username,
         hashed_password=hashed_password,
         role=create_user_dto.role or 'user',
     )
@@ -74,7 +74,7 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     
-    token = TokenData(user.username)
+    token = TokenData(user.user_name)
     access_token = token.create_token(
         expires=access_token_expires,
         user_id=user.id,
@@ -84,7 +84,7 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     response = JSONResponse(content={
         "access_token" : access_token,
          "token_type" : "bearer",
-         "message": f"{user.username}, Login successful"})
+         "message": f"{user.user_name}, Login successful"})
     
     return response
 
@@ -99,7 +99,7 @@ def authenticate_user(username: str,
     if check_if_email(username):
         user = db.query(User).filter(User.email==username).first()
     else: 
-        user = db.query(User).filter(User.username==username).first()
+        user = db.query(User).filter(User.user_name==username).first()
         
     if not user:
         raise HTTPException(status_code=404, detail="Incorrect username or password")

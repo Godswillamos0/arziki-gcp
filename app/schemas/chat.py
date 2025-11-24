@@ -1,9 +1,10 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List
+from datetime import datetime
 
 class ChatMessageDTO(BaseModel):
     message: str
-    timestamp: Optional[str] = None
+    timestamp: Optional[datetime]
     
     
 class ChatHistoryDTO(BaseModel):

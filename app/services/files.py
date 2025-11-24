@@ -1,5 +1,5 @@
 from fastapi import HTTPException, Depends, Path, UploadFile
-from app.db.models import User, ChatHistory, FileUpload
+from app.db.models import User, ChatMessages, FileUpload
 from app.db.dependencies import db_dependency
 from .auth import user_dependency
 from ai.main_agent import (generate_reply as ask_llm,
@@ -9,7 +9,6 @@ from ai.main_agent import (generate_reply as ask_llm,
 from app.utils.cloud_storage_config import upload_blob, download_blob
 from app.core.config import CLOUD_BUCKET_NAME
 from datetime import datetime
-from app.utils.pdf_config import convert_html_to_pdf
 
 
 async def get_all_files(
@@ -26,9 +25,8 @@ async def get_all_files(
     return [
         {
             "id": file.id,
-            "file_name": file.file_name,
-            "file_url": file.file_url,
-            "uploaded_at": file.uploaded_at
+            "file_url": file.file_path,
+            "uploaded_at": file.upload_time
         }
         for file in files
     ]
@@ -52,9 +50,8 @@ async def get_file_by_id(
     
     return {
         "id": file_model.id,
-        "file_name": file_model.file_name,
-        "file_url": file_model.file_url,
-        "uploaded_at": file_model.uploaded_at
+        "file_url": file_model.file_path,
+        "uploaded_at": file_model.upload_time
     }
     
     

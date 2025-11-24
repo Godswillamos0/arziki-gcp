@@ -36,7 +36,7 @@ class TokenData:
             if username is None:
                 raise credentials_exception
             return {
-                "username": username,
+                "sub": username,
                 "id": payload.get("id"),
                 "role": payload.get("role"),
                 "exp": payload.get("exp")
