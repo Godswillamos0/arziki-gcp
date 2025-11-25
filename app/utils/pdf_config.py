@@ -1,6 +1,6 @@
 import convertapi
 import asyncio
-from core.config import CONVERT_API_SECRET
+from app.core.config import CONVERT_API_SECRET
 
 def remove_before_doctype(html_str):
     doctype_index = html_str.find("<!DOCTYPE html>")
