@@ -1,6 +1,6 @@
-from playwright.sync_api import sync_playwright
+import convertapi
 import asyncio
-
+from core.config import CONVERT_API_SECRET
 
 def remove_before_doctype(html_str):
     doctype_index = html_str.find("<!DOCTYPE html>")
@@ -13,16 +13,6 @@ def create_html_file(html_content):
         f.write(html_content)
 
 
-def html_to_pdf_sync(output_pdf, input_html="my_page.html"):
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        page = browser.new_page()
-        page.goto(f"file:///{input_html}")
-        page.pdf(path=output_pdf, format="A4")
-        browser.close()
-        return output_pdf
-
-
 async def convert_html_to_pdf(html_content: str, output_file: str):
     create_html_file(html_content)
 
@@ -30,3 +20,27 @@ async def convert_html_to_pdf(html_content: str, output_file: str):
     return await loop.run_in_executor(
         None, html_to_pdf_sync, output_file, "my_page.html"
     )
+
+def html_to_pdf_sync(output_pdf, input_html="my_page.html"):
+    
+
+    # Use your REAL ConvertAPI Secret Key (NOT Secret ID)
+    convertapi.api_credentials = CONVERT_API_SECRET
+
+    result = convertapi.convert(
+        'pdf',
+        {
+            'File': input_html,
+            'MarginTop': '10',
+            'MarginBottom': '10',
+            'MarginLeft': '10',
+            'MarginRight': '10',
+            'PageOrientation': 'Portrait'
+        },
+        from_format='html'
+    )
+
+    result.file.save(output_pdf)
+    print(f"PDF saved as {output_pdf}")
+    return output_pdf
+
